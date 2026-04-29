@@ -54,7 +54,8 @@ public class SecurityConfig {
                                 "/member/doLogin",
                                 "/member/google/doLogin",
                                 "/member/kakao/doLogin",
-                                "/oauth2/**"
+                                "/oauth2/**",
+                                "/api/disaster/**"
                         ).permitAll()
                         .anyRequest().authenticated())
 
