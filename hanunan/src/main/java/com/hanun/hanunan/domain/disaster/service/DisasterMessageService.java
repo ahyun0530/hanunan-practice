@@ -35,21 +35,27 @@ public class DisasterMessageService {
         log.info("입력 메시지: {}", disasterMessage);
 
 
+        String now = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+
         String prompt = """
-                다음 재난문자에서 시간과 장소를 추출하세요.
-                
-                규칙:
-                - time: 시각 또는 날짜 표현 (예: 15:00, 오전 9시, 11월 15일)
-                - location: 도로명 주소 또는 지번 주소 전체를 추출 (예: 오산시 누읍동 45-1, 함안군 칠북면 검단리 1085번지)
-                  * 시/군/구 + 읍/면/동 + 번지 또는 리 까지 최대한 상세하게 추출
-                  * 번지수, 호수가 있으면 반드시 포함
-                - 반드시 JSON 형식으로만 응답
-                - 값이 없으면 null
-                
-                출력 형식: {"time": "...", "location": "..."}
-                
-                재난문자: "%s"
-                """.formatted(disasterMessage);
+            다음 재난문자에서 시간과 장소를 추출하세요.
+            현재 시각은 %s 입니다.
+            
+            규칙:
+            - time: 시각 또는 날짜 표현 (예: 15:00, 오전 9시, 11월 15일)
+              * "현재", "지금" 등의 표현이 있으면 현재 시각(%s)을 그대로 사용
+            - location: 주소와 건물명/시설명을 최대한 상세하게 추출
+              * 시/군/구 + 읍/면/동 + 번지까지 포함
+              * 번지 없이 건물명, 공장명, 시설명이 있으면 반드시 포함 (예: 울주군 온산읍 에쓰오일 공장)
+              * 번지와 건물명이 모두 있으면 둘 다 포함 (예: 오산시 누읍동 45-1 OO공장)
+            - 반드시 JSON 형식으로만 응답
+            - 값이 없으면 null
+            
+            출력 형식: {"time": "...", "location": "..."}
+            
+            재난문자: "%s"
+        """.formatted(now, now, disasterMessage);
 
 
         RestTemplate restTemplate = new RestTemplate();
