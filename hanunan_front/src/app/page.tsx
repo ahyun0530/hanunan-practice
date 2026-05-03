@@ -26,7 +26,9 @@ import {
     SafetyFacility,
     getMapReports,
     createMapReport,
-    MapReport
+    MapReport,
+    extractDisasterInfo,
+    DisasterExtractResult,
 } from '@/services/api';
 import LoginModal from "@/components/auth/LoginModal";
 
@@ -85,9 +87,27 @@ export default function DashboardPage() {
     const [mapCenter, setMapCenter] = useState({ lat: 35.1595, lng: 126.8526 }); //제보 생성 위치
 
     const [mapReports, setMapReports] = useState<MapReport[]>([]);
-    //const [reportsMakers, setreportsMakers] = useState<any[]>([]); // 제보 마커데이터 리스트
-    const [selectedReportType, setSelectedReportType] = useState('🔥 화재'); // 기본값
+    const [selectedReportType, setSelectedReportType] = useState('🔥 화재');
     const [reportDescription, setReportDescription] = useState('');
+
+    const [disasterInput, setDisasterInput] = useState('');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [extractedDisaster, setExtractedDisaster] = useState<DisasterExtractResult | null>(null);
+    const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+
+    const handleAnalyzeDisaster = async () => {
+        if (!disasterInput.trim()) return;
+        setIsAnalyzing(true);
+        setExtractedDisaster(null);
+        try {
+            const result = await extractDisasterInfo(disasterInput);
+            setExtractedDisaster(result);
+        } catch (e) {
+            alert('분석 중 오류가 발생했습니다. 백엔드 서버를 확인해주세요.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
 
     // 카테고리 변경 시 데이터 로드
     useEffect(() => {
@@ -128,16 +148,22 @@ export default function DashboardPage() {
         }
     }, [isReportWriteModalOpen]);
 
-    //페이지 로드 시 로컬 스토리지에서 이름 가져오기
+    //페이지 로드 시 로컬 스토리지에서 로그인 상태 복원
     useEffect(() => {
-        const savedUser = localStorage.getItem('user');
-        if (savedUser) {
-            try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        setIsLoggedIn(true);
+        try {
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) {
                 const parsed = JSON.parse(savedUser);
-                setUserName(parsed.nickname);
-            } catch (e) {
-                console.error("유저 정보 파싱 에러", e);
+                setUserName(parsed.nickname || parsed.email?.split('@')[0] || '사용자');
+            } else {
+                setUserName('사용자');
             }
+        } catch (e) {
+            setUserName('사용자');
         }
     }, []);
 
@@ -582,7 +608,7 @@ export default function DashboardPage() {
                     <span className="text-lg"></span>
                     제보마커생성하기
                 </button>
-                {isMounted && userName ? (
+                {isMounted && isLoggedIn ? (
                     <div className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-2xl shadow-xl border-2 border-[#3954AA]/20 animate-fadeIn">
                         <div
                             className="flex items-center gap-3 cursor-pointer hover:opacity-70 transition-all"
@@ -599,6 +625,9 @@ export default function DashboardPage() {
                         <button
                             onClick={() => {
                                 localStorage.removeItem('user');
+                                localStorage.removeItem('token');
+                                setUserName(null);
+                                setIsLoggedIn(false);
                                 window.location.reload();
                             }}
                             className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors ml-2 border-l pl-2 border-gray-200"
@@ -699,7 +728,7 @@ export default function DashboardPage() {
 
             <div className="flex-1 flex flex-col gap-6 h-full">
                 <section className="flex-1 bg-white rounded-[40px] shadow-xl overflow-hidden relative border-4 border-white">
-                    <KakaoMap center={position} activeCategory={activeCategory} disasterData={disasters} weatherAlerts={weatherAlerts} fireStations={fireStations} safetyData={safetyFacilities} mapReports={mapReports} onSelectItem={handleSelectItem} />
+                    <KakaoMap center={position} activeCategory={activeCategory} disasterData={disasters} weatherAlerts={weatherAlerts} fireStations={fireStations} safetyData={safetyFacilities} mapReports={mapReports} extractedDisaster={extractedDisaster} onSelectItem={handleSelectItem} />
                 </section>
 
                 <section className="h-[300px] bg-[#4C5CA4] rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden">

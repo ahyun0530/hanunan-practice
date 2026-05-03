@@ -614,10 +614,27 @@ export const createMapReport = async (
 
 export const getMyMapReports = async (userId: number): Promise<MapReport[]> => {
   const allReports = await getMapReports();
-  return allReports.filter(report => report.userId === userId); 
+  return allReports.filter(report => report.userId === userId);
 };
 
 export const getMyCitizenReports = async (userId: number): Promise<CitizenReport[]> => {
   const allReports = await getCitizenReports();
   return allReports.filter(report => report.userId === userId);
+};
+
+export interface DisasterExtractResult {
+  time: string | null;
+  location: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+export const extractDisasterInfo = async (message: string): Promise<DisasterExtractResult> => {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/disaster/extract`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) throw new Error('재난문자 분석 실패');
+  return res.json();
 };

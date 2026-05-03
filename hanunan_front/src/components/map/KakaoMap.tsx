@@ -3,7 +3,7 @@
 
 import { useEffect, useRef } from 'react';
 import Script from 'next/script';
-import { DisasterMessage, WeatherAlert, FireStation, SafetyFacility } from '@/services/api';
+import { DisasterMessage, WeatherAlert, FireStation, SafetyFacility, DisasterExtractResult } from '@/services/api';
 
 const KAKAO_SDK_URL = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services,clusterer`;
 
@@ -15,16 +15,18 @@ interface KakaoMapProps {
   fireStations: FireStation[];
   safetyData: SafetyFacility[];
   mapReports: any[];
+  extractedDisaster?: DisasterExtractResult | null;
   onSelectItem: (item: any, type: 'DISASTER' | 'WEATHER' | 'FIRE' | 'SAFETY' | 'REPORT') => void;
 }
 
-export default function KakaoMap({ center, activeCategory, disasterData, weatherAlerts, fireStations, safetyData, mapReports, onSelectItem }: KakaoMapProps) {
+export default function KakaoMap({ center, activeCategory, disasterData, weatherAlerts, fireStations, safetyData, mapReports, extractedDisaster, onSelectItem }: KakaoMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const overlaysRef = useRef<any[]>([]);
   const polygonsRef = useRef<any[]>([]);
   const clustererRef = useRef<any>(null);
   const myLocationOverlayRef = useRef<any>(null);
+  const extractedOverlayRef = useRef<any>(null);
 
   const handleMoveToCurrentLocation = () => {
     const { kakao } = window as any;
@@ -248,6 +250,57 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
   useEffect(() => {
     if (mapInstance.current) renderItems();
   }, [disasterData, weatherAlerts, mapReports, activeCategory]);
+
+  useEffect(() => {
+    const { kakao } = window as any;
+    if (!mapInstance.current || !kakao) return;
+
+    if (extractedOverlayRef.current) {
+      extractedOverlayRef.current.setMap(null);
+      extractedOverlayRef.current = null;
+    }
+
+    if (!extractedDisaster?.lat || !extractedDisaster?.lng) return;
+
+    const pos = new kakao.maps.LatLng(extractedDisaster.lat, extractedDisaster.lng);
+
+    const content = document.createElement('div');
+    content.innerHTML = `
+      <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+        <div style="
+          background:white;
+          border:3px solid #4C5CA4;
+          border-radius:16px;
+          padding:8px 14px;
+          box-shadow:0 4px 16px rgba(76,92,164,0.35);
+          min-width:160px;
+          max-width:240px;
+          text-align:center;
+        ">
+          <div style="font-size:11px; font-weight:900; color:#4C5CA4; letter-spacing:0.05em; margin-bottom:4px;">📍 AI 위치 추출</div>
+          ${extractedDisaster.time ? `<div style="font-size:11px; color:#FF6B35; font-weight:700; margin-bottom:3px;">🕐 ${extractedDisaster.time}</div>` : ''}
+          <div style="font-size:11px; color:#333; font-weight:600; line-height:1.4; word-break:keep-all;">${extractedDisaster.location || '위치 정보'}</div>
+        </div>
+        <div style="width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-top:10px solid #4C5CA4;"></div>
+        <div style="
+          width:16px; height:16px;
+          background:#4C5CA4;
+          border:3px solid white;
+          border-radius:50%;
+          box-shadow:0 0 0 4px rgba(76,92,164,0.3), 0 0 0 8px rgba(76,92,164,0.1);
+          margin-top:-2px;
+        "></div>
+      </div>`;
+
+    extractedOverlayRef.current = new kakao.maps.CustomOverlay({
+      position: pos,
+      content,
+      yAnchor: 1.15,
+      zIndex: 50,
+    });
+    extractedOverlayRef.current.setMap(mapInstance.current);
+    mapInstance.current.panTo(pos);
+  }, [extractedDisaster]);
 
   return (
     <div className="relative w-full h-full">
