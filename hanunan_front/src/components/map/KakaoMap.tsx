@@ -3,7 +3,7 @@
 
 import { useEffect, useRef } from 'react';
 import Script from 'next/script';
-import { DisasterMessage, WeatherAlert, FireStation, SafetyFacility, DisasterExtractResult } from '@/services/api';
+import { DisasterMessage, WeatherAlert, FireStation, SafetyFacility, DisasterExtractResult, FireMarker } from '@/services/api';
 
 const KAKAO_SDK_URL = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services,clusterer`;
 
@@ -16,10 +16,11 @@ interface KakaoMapProps {
   safetyData: SafetyFacility[];
   mapReports: any[];
   extractedDisaster?: DisasterExtractResult | null;
+  fireMarkers?: FireMarker[];
   onSelectItem: (item: any, type: 'DISASTER' | 'WEATHER' | 'FIRE' | 'SAFETY' | 'REPORT') => void;
 }
 
-export default function KakaoMap({ center, activeCategory, disasterData, weatherAlerts, fireStations, safetyData, mapReports, extractedDisaster, onSelectItem }: KakaoMapProps) {
+export default function KakaoMap({ center, activeCategory, disasterData, weatherAlerts, fireStations, safetyData, mapReports, extractedDisaster, fireMarkers = [], onSelectItem }: KakaoMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const overlaysRef = useRef<any[]>([]);
@@ -27,6 +28,8 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
   const clustererRef = useRef<any>(null);
   const myLocationOverlayRef = useRef<any>(null);
   const extractedOverlayRef = useRef<any>(null);
+  const fireOverlaysRef = useRef<any[]>([]);
+  const fireInfoOverlayRef = useRef<any>(null);
 
   const handleMoveToCurrentLocation = () => {
     const { kakao } = window as any;
@@ -302,6 +305,117 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
     mapInstance.current.panTo(pos);
   }, [extractedDisaster]);
 
+  useEffect(() => {
+    const { kakao } = window as any;
+    if (!mapInstance.current || !kakao) return;
+
+    // 기존 화재 마커 전부 제거
+    fireOverlaysRef.current.forEach(o => o.setMap(null));
+    fireOverlaysRef.current = [];
+    if (fireInfoOverlayRef.current) {
+      fireInfoOverlayRef.current.setMap(null);
+      fireInfoOverlayRef.current = null;
+    }
+
+    fireMarkers.forEach((fire, index) => {
+      const pos = new kakao.maps.LatLng(fire.latitude, fire.longitude);
+
+      // 핀드롭 딜레이를 마커마다 약간씩 다르게
+      const delay = index * 80;
+
+      const content = document.createElement('div');
+      content.innerHTML = `
+        <div class="fire-pin-wrapper" style="
+          display:flex; flex-direction:column; align-items:center;
+          animation: firePinDrop 0.45s cubic-bezier(.22,.68,0,1.2) ${delay}ms both;
+          cursor:pointer;
+        ">
+          <div style="
+            width:36px; height:36px;
+            background:linear-gradient(135deg,#FF4B4B,#FF8C00);
+            border:2.5px solid white;
+            border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            font-size:18px;
+            box-shadow:0 3px 12px rgba(255,75,75,0.55);
+          ">🔥</div>
+          <div style="width:2px;height:8px;background:#FF4B4B;"></div>
+          <div style="width:8px;height:4px;background:rgba(255,75,75,0.3);border-radius:50%;"></div>
+        </div>`;
+
+      content.onclick = (e) => {
+        e.stopPropagation();
+
+        // 기존 인포윈도우 닫기
+        if (fireInfoOverlayRef.current) {
+          fireInfoOverlayRef.current.setMap(null);
+          fireInfoOverlayRef.current = null;
+        }
+
+        const infoContent = document.createElement('div');
+        infoContent.innerHTML = `
+          <div style="
+            position:relative;
+            background:white;
+            border-radius:16px;
+            padding:14px 16px 12px;
+            box-shadow:0 6px 24px rgba(0,0,0,0.18);
+            max-width:280px;
+            border-top:4px solid #FF4B4B;
+          ">
+            <button id="fire-info-close" style="
+              position:absolute; top:8px; right:10px;
+              background:none; border:none; cursor:pointer;
+              font-size:15px; color:#aaa; line-height:1;
+            ">✕</button>
+            <div style="font-size:12px;font-weight:900;color:#FF4B4B;margin-bottom:6px;">🔥 화재 발생</div>
+            <div style="font-size:11px;color:#555;margin-bottom:3px;">📍 ${fire.parsedAddress}</div>
+            <div style="font-size:11px;color:#777;margin-bottom:8px;">📡 수신: ${fire.rcptnRgnNm}</div>
+            <div style="
+              font-size:11px;color:#333;line-height:1.6;
+              border-top:1px solid #f0f0f0;padding-top:8px;
+              max-height:100px;overflow-y:auto;word-break:keep-all;
+            ">${fire.messageContent}</div>
+            <div style="font-size:10px;color:#bbb;margin-top:6px;text-align:right;">
+              ${new Date(fire.createdAt).toLocaleString('ko-KR')}
+            </div>
+          </div>`;
+
+        const infoOverlay = new kakao.maps.CustomOverlay({
+          position: pos,
+          content: infoContent,
+          yAnchor: 1.25,
+          zIndex: 100,
+        });
+        infoOverlay.setMap(mapInstance.current);
+        fireInfoOverlayRef.current = infoOverlay;
+
+        // 닫기 버튼 이벤트
+        setTimeout(() => {
+          const closeBtn = document.getElementById('fire-info-close');
+          if (closeBtn) {
+            closeBtn.onclick = (ev) => {
+              ev.stopPropagation();
+              infoOverlay.setMap(null);
+              fireInfoOverlayRef.current = null;
+            };
+          }
+        }, 0);
+
+        mapInstance.current.panTo(pos);
+      };
+
+      const overlay = new kakao.maps.CustomOverlay({
+        position: pos,
+        content,
+        yAnchor: 1.2,
+        zIndex: 40,
+      });
+      overlay.setMap(mapInstance.current);
+      fireOverlaysRef.current.push(overlay);
+    });
+  }, [fireMarkers]);
+
   return (
     <div className="relative w-full h-full">
       <Script src={KAKAO_SDK_URL} strategy="afterInteractive" onLoad={initMap} />
@@ -323,6 +437,12 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
       <style>{`
         .kakao_scale, .kakao_copyright, [style*="z-index: 1; margin: 0px 6px;"] {
           display: none !important;
+        }
+        @keyframes firePinDrop {
+          0%   { transform: translateY(-40px); opacity: 0; }
+          60%  { transform: translateY(4px);   opacity: 1; }
+          80%  { transform: translateY(-6px); }
+          100% { transform: translateY(0);     opacity: 1; }
         }
       `}</style>
 

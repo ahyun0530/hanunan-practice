@@ -622,6 +622,36 @@ export const getMyCitizenReports = async (userId: number): Promise<CitizenReport
   return allReports.filter(report => report.userId === userId);
 };
 
+export interface FireMarker {
+  id: number;
+  sn: string;
+  messageContent: string;
+  rcptnRgnNm: string;
+  parsedAddress: string;
+  latitude: number;
+  longitude: number;
+  createdAt: string;
+}
+
+export const getFireMarkers = async (): Promise<FireMarker[]> => {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/fire/markers`);
+  if (!res.ok) throw new Error('화재 마커 조회 실패');
+  return res.json();
+};
+
+export const testFireMarker = async (message: string, rcptnRgnNm?: string): Promise<FireMarker> => {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/fire/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, rcptnRgnNm: rcptnRgnNm || '' }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(errText || '테스트 마커 추가 실패');
+  }
+  return res.json();
+};
+
 export interface DisasterExtractResult {
   time: string | null;
   location: string | null;
