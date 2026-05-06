@@ -31,7 +31,6 @@ import {
     DisasterExtractResult,
     getFireMarkers,
     FireMarker,
-    testFireMarker,
 } from '@/services/api';
 import LoginModal from "@/components/auth/LoginModal";
 
@@ -99,12 +98,6 @@ export default function DashboardPage() {
     const [extractedDisaster, setExtractedDisaster] = useState<DisasterExtractResult | null>(null);
     const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
 
-    // 화재 테스트 패널
-    const [isTestPanelOpen, setIsTestPanelOpen] = useState(false);
-    const [testMessage, setTestMessage] = useState('');
-    const [testRegion, setTestRegion] = useState('');
-    const [isTestLoading, setIsTestLoading] = useState(false);
-
     // 화재 마커 로드 및 5분 주기 갱신
     useEffect(() => {
         const fetchFireMarkers = async () => {
@@ -132,22 +125,6 @@ export default function DashboardPage() {
             alert('분석 중 오류가 발생했습니다. 백엔드 서버를 확인해주세요.');
         } finally {
             setIsAnalyzing(false);
-        }
-    };
-
-    const handleTestFireMarker = async () => {
-        if (!testMessage.trim()) return;
-        setIsTestLoading(true);
-        try {
-            const marker = await testFireMarker(testMessage, testRegion);
-            setFireMarkers(prev => [marker, ...prev]);
-            setTestMessage('');
-            setTestRegion('');
-            setIsTestPanelOpen(false);
-        } catch (e: any) {
-            alert(`테스트 실패: ${e.message}`);
-        } finally {
-            setIsTestLoading(false);
         }
     };
 
@@ -473,6 +450,17 @@ export default function DashboardPage() {
         setEditDescription('');
     };
 
+    const handleOpenReportWriteModal = () => {
+        const token = localStorage.getItem('token');
+        if (!isLoggedIn || !token) {
+            alert('로그인 후 제보마커를 생성할 수 있습니다.');
+            setIsLoginModalOpen(true);
+            return;
+        }
+
+        setIsReportWriteModalOpen(true);
+    };
+
     // 수정 완료 저장
     const handleUpdateReport = async (reportId: number) => {
         if (!editDescription.trim()) return;
@@ -644,7 +632,7 @@ export default function DashboardPage() {
         <main className="flex h-[100dvh] w-full bg-[#F0F2F5] p-6 gap-6 overflow-hidden relative">
             <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
                 <button
-                    onClick={() => setIsReportWriteModalOpen(true)}
+                    onClick={handleOpenReportWriteModal}
                     className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl shadow-lg hover:scale-105 transition-all flex items-center gap-2"
                 >
                     <span className="text-lg"></span>
@@ -657,7 +645,7 @@ export default function DashboardPage() {
                             onClick={() => setIsProfileModalOpen(true)}
                         >
                             <div className="w-8 h-8 bg-[#3954AA] rounded-full flex items-center justify-center text-white text-xs font-black shadow-inner">
-                                {userName.charAt(0)}
+                                {(userName ?? 'U').charAt(0)}
                             </div>
                             <span className="font-black text-gray-800 tracking-tight">
                                 <span className="text-[#3954AA]">{userName}</span>님
@@ -772,46 +760,6 @@ export default function DashboardPage() {
                 <section className="flex-1 bg-white rounded-[40px] shadow-xl overflow-hidden relative border-4 border-white">
                     <KakaoMap center={position} activeCategory={activeCategory} disasterData={disasters} weatherAlerts={weatherAlerts} fireStations={fireStations} safetyData={safetyFacilities} mapReports={mapReports} extractedDisaster={extractedDisaster} fireMarkers={fireMarkers} onSelectItem={handleSelectItem} />
 
-                    {/* 화재 테스트 패널 */}
-                    <div className="absolute bottom-4 right-4 z-50 flex flex-col items-end gap-2">
-                        {isTestPanelOpen && (
-                            <div className="bg-white rounded-2xl shadow-2xl border border-orange-200 p-4 w-80">
-                                <div className="flex justify-between items-center mb-3">
-                                    <span className="font-black text-orange-600 text-sm">🔥 화재 문자 테스트</span>
-                                    <button
-                                        onClick={() => setIsTestPanelOpen(false)}
-                                        className="text-gray-400 hover:text-gray-600 text-xs"
-                                    >✕</button>
-                                </div>
-                                <textarea
-                                    value={testMessage}
-                                    onChange={e => setTestMessage(e.target.value)}
-                                    placeholder={"[광주소방] 북구 용봉동 123-4 건물 화재 발생. 해당 지역 주민 대피 바랍니다."}
-                                    className="w-full text-black text-xs p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 resize-none h-24 mb-2"
-                                />
-                                <input
-                                    value={testRegion}
-                                    onChange={e => setTestRegion(e.target.value)}
-                                    placeholder="수신지역명 (선택) 예: 광주광역시 북구"
-                                    className="w-full text-black text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 mb-3"
-                                />
-                                <button
-                                    onClick={handleTestFireMarker}
-                                    disabled={isTestLoading || !testMessage.trim()}
-                                    className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-black rounded-xl transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                >
-                                    {isTestLoading ? '처리 중...' : '지도에 핀 추가'}
-                                </button>
-                            </div>
-                        )}
-                        <button
-                            onClick={() => setIsTestPanelOpen(v => !v)}
-                            className="w-10 h-10 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-lg flex items-center justify-center text-lg transition-all hover:scale-110"
-                            title="화재 테스트"
-                        >
-                            🔥
-                        </button>
-                    </div>
                 </section>
 
                 <section className="h-[300px] bg-[#4C5CA4] rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden">
