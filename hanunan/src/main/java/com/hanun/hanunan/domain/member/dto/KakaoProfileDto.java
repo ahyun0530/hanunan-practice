@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Profile;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true) //없는 필드는 자동무시
 public class KakaoProfileDto {
-    private String id;
+    private Long id;
     private KakaoAccount kakao_account;
     @Data
     @NoArgsConstructor

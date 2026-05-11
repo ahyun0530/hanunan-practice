@@ -60,6 +60,15 @@ kakao:
   api:
     key: ${KAKAO_API_KEY}
 
+disaster:
+  api:
+    key: ${DISASTER_API_KEY}
+    url: ${DISASTER_API_URL:https://www.safetydata.go.kr/V2/api/DSSP-IF-00247}
+
 
 server:
   port: ${SERVER_PORT}
+
+app:
+  upload:
+    report-image-dir: ${REPORT_IMAGE_DIR:uploads/reports}

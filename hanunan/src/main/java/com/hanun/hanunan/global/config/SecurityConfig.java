@@ -4,6 +4,7 @@ import com.hanun.hanunan.global.security.JwtTokenFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -47,15 +48,19 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+                // 1. CSRF 보호 비활성화
+                .csrf(csrf -> csrf.disable())
                 // 4. URL별 권한 제어
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/api/reports/**", "/uploads/reports/**").permitAll()
                         .requestMatchers(
                                 "/member/create",
                                 "/member/doLogin",
                                 "/member/google/doLogin",
                                 "/member/kakao/doLogin",
                                 "/oauth2/**",
-                                "/api/disaster/**"
+                                "/api/disaster/**",
+                                "/api/fire/**"
                         ).permitAll()
                         .anyRequest().authenticated())
 

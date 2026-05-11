@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { DisasterMessage, WeatherAlert, FireStation, SafetyFacility, DisasterExtractResult, FireMarker } from '@/services/api';
 
@@ -30,6 +30,8 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
   const extractedOverlayRef = useRef<any>(null);
   const fireOverlaysRef = useRef<any[]>([]);
   const fireInfoOverlayRef = useRef<any>(null);
+  const fireInfoOpenIdRef = useRef<number | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const handleMoveToCurrentLocation = () => {
     const { kakao } = window as any;
@@ -90,6 +92,7 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
 
       kakao.maps.event.addListener(mapInstance.current, 'click', () => onSelectItem(null, 'DISASTER'));
       renderItems();
+      setMapReady(true);
     });
   };
   const renderItems = () => {
@@ -305,6 +308,20 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
     mapInstance.current.panTo(pos);
   }, [extractedDisaster]);
 
+  const getFireStage = (createdAt: string): 'active' | 'cooling' | 'ended' | null => {
+    const hours = (Date.now() - new Date(createdAt).getTime()) / 3600000;
+    if (hours >= 12) return null;
+    if (hours >= 6)  return 'ended';
+    if (hours >= 2)  return 'cooling';
+    return 'active';
+  };
+
+  const stageStyle = {
+    active:  { bg: 'linear-gradient(135deg,#CC0000,#FF2020)', stem: '#CC0000', shadow: 'rgba(204,0,0,0.6)',    opacity: '1',   animation: 'firePulse 1.2s ease-in-out infinite', cardBorder: '#CC0000' },
+    cooling: { bg: 'linear-gradient(135deg,#FF6A00,#FF9500)', stem: '#FF6A00', shadow: 'rgba(255,106,0,0.4)',  opacity: '0.55', animation: 'none',                               cardBorder: '#FF6A00' },
+    ended:   { bg: '#999999',                                  stem: '#999999', shadow: 'rgba(0,0,0,0.15)',     opacity: '0.45', animation: 'none',                               cardBorder: '#999999' },
+  };
+
   useEffect(() => {
     const { kakao } = window as any;
     if (!mapInstance.current || !kakao) return;
@@ -317,7 +334,11 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
       fireInfoOverlayRef.current = null;
     }
 
-    fireMarkers.forEach((fire, index) => {
+    fireMarkers
+      .filter(fire => getFireStage(fire.createdAt) !== null)
+      .forEach((fire, index) => {
+      const stage = getFireStage(fire.createdAt)!;
+      const s = stageStyle[stage];
       const pos = new kakao.maps.LatLng(fire.latitude, fire.longitude);
 
       // 핀드롭 딜레이를 마커마다 약간씩 다르게
@@ -329,24 +350,34 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
           display:flex; flex-direction:column; align-items:center;
           animation: firePinDrop 0.45s cubic-bezier(.22,.68,0,1.2) ${delay}ms both;
           cursor:pointer;
+          opacity:${s.opacity};
         ">
           <div style="
             width:36px; height:36px;
-            background:linear-gradient(135deg,#FF4B4B,#FF8C00);
+            background:${s.bg};
             border:2.5px solid white;
             border-radius:50%;
             display:flex; align-items:center; justify-content:center;
             font-size:18px;
-            box-shadow:0 3px 12px rgba(255,75,75,0.55);
+            box-shadow:0 3px 12px ${s.shadow};
+            animation:${s.animation};
           ">🔥</div>
-          <div style="width:2px;height:8px;background:#FF4B4B;"></div>
-          <div style="width:8px;height:4px;background:rgba(255,75,75,0.3);border-radius:50%;"></div>
+          <div style="width:2px;height:8px;background:${s.stem};"></div>
+          <div style="width:8px;height:4px;background:${s.shadow};border-radius:50%;"></div>
         </div>`;
 
       content.onclick = (e) => {
         e.stopPropagation();
 
-        // 기존 인포윈도우 닫기
+        // 같은 마커 재클릭 시 닫기 (토글)
+        if (fireInfoOpenIdRef.current === fire.id) {
+          fireInfoOverlayRef.current?.setMap(null);
+          fireInfoOverlayRef.current = null;
+          fireInfoOpenIdRef.current = null;
+          return;
+        }
+
+        // 다른 마커의 인포윈도우가 열려있으면 닫기
         if (fireInfoOverlayRef.current) {
           fireInfoOverlayRef.current.setMap(null);
           fireInfoOverlayRef.current = null;
@@ -354,27 +385,28 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
 
         const infoContent = document.createElement('div');
         infoContent.innerHTML = `
-          <div style="
+          <div id="fire-info-card-${fire.id}" style="
             position:relative;
             background:white;
             border-radius:16px;
             padding:14px 16px 12px;
             box-shadow:0 6px 24px rgba(0,0,0,0.18);
-            max-width:280px;
-            border-top:4px solid #FF4B4B;
+            width:300px;
+            border-top:4px solid ${s.cardBorder};
+            cursor:pointer;
           ">
-            <button id="fire-info-close" style="
+            <button id="fire-info-close-${fire.id}" style="
               position:absolute; top:8px; right:10px;
               background:none; border:none; cursor:pointer;
               font-size:15px; color:#aaa; line-height:1;
             ">✕</button>
-            <div style="font-size:12px;font-weight:900;color:#FF4B4B;margin-bottom:6px;">🔥 화재 발생</div>
+            <div style="font-size:12px;font-weight:900;color:${s.cardBorder};margin-bottom:6px;">${stage === 'active' ? '🔥 화재 진행 중' : stage === 'cooling' ? '🟠 정리 중' : '⬜ 상황 종료'}</div>
             <div style="font-size:11px;color:#555;margin-bottom:3px;">📍 ${fire.parsedAddress}</div>
             <div style="font-size:11px;color:#777;margin-bottom:8px;">📡 수신: ${fire.rcptnRgnNm}</div>
             <div style="
               font-size:11px;color:#333;line-height:1.6;
               border-top:1px solid #f0f0f0;padding-top:8px;
-              max-height:100px;overflow-y:auto;word-break:keep-all;
+              word-break:keep-all;overflow-wrap:break-word;white-space:normal;
             ">${fire.messageContent}</div>
             <div style="font-size:10px;color:#bbb;margin-top:6px;text-align:right;">
               ${new Date(fire.createdAt).toLocaleString('ko-KR')}
@@ -389,17 +421,20 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
         });
         infoOverlay.setMap(mapInstance.current);
         fireInfoOverlayRef.current = infoOverlay;
+        fireInfoOpenIdRef.current = fire.id;
 
-        // 닫기 버튼 이벤트
+        const closeOverlay = () => {
+          infoOverlay.setMap(null);
+          fireInfoOverlayRef.current = null;
+          fireInfoOpenIdRef.current = null;
+        };
+
+        // 팝업 카드 클릭 시 닫기 + ✕ 버튼 클릭 시 닫기
         setTimeout(() => {
-          const closeBtn = document.getElementById('fire-info-close');
-          if (closeBtn) {
-            closeBtn.onclick = (ev) => {
-              ev.stopPropagation();
-              infoOverlay.setMap(null);
-              fireInfoOverlayRef.current = null;
-            };
-          }
+          const card = document.getElementById(`fire-info-card-${fire.id}`);
+          const closeBtn = document.getElementById(`fire-info-close-${fire.id}`);
+          if (card) card.onclick = (ev) => { ev.stopPropagation(); closeOverlay(); };
+          if (closeBtn) closeBtn.onclick = (ev) => { ev.stopPropagation(); closeOverlay(); };
         }, 0);
 
         mapInstance.current.panTo(pos);
@@ -414,7 +449,7 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
       overlay.setMap(mapInstance.current);
       fireOverlaysRef.current.push(overlay);
     });
-  }, [fireMarkers]);
+  }, [fireMarkers, mapReady]);
 
   return (
     <div className="relative w-full h-full">
@@ -443,6 +478,10 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
           60%  { transform: translateY(4px);   opacity: 1; }
           80%  { transform: translateY(-6px); }
           100% { transform: translateY(0);     opacity: 1; }
+        }
+        @keyframes firePulse {
+          0%, 100% { box-shadow: 0 3px 12px rgba(255,75,75,0.55); transform: scale(1); }
+          50%       { box-shadow: 0 3px 22px rgba(255,75,75,0.85), 0 0 0 6px rgba(255,75,75,0.15); transform: scale(1.08); }
         }
       `}</style>
 

@@ -55,21 +55,23 @@ public class MemberController {
 
     @PostMapping("/google/doLogin")
     public ResponseEntity<?> googleLogin(@RequestBody RedirectDto redirectDto){
-//        accesstoken 발급
         AccessTokenDto accessTokenDto = googleService.getAccessToken(redirectDto.getCode());
-//        사용자정보 얻기
         GoogleProfileDto googleProfileDto = googleService.getGoogleProfile(accessTokenDto.getAccess_token());
-//        회원가입이 되어 있지 않다면 회원가입
+
         Member originalMember = memberService.getMemberBySocialId(googleProfileDto.getSub());
         if(originalMember == null){
-            originalMember = memberService.createOauth(googleProfileDto.getSub(), googleProfileDto.getEmail(), SocialType.GOOGLE);
+            String name = googleProfileDto.getName() != null ? googleProfileDto.getName()
+                    : googleProfileDto.getEmail().split("@")[0];
+            originalMember = memberService.createOauth(googleProfileDto.getSub(), googleProfileDto.getEmail(), name, SocialType.GOOGLE);
         }
-//        회원가입돼 있는 회원이라면 토큰발급
+
         String jwtToken = jwtTokenProvider.createToken(originalMember.getEmail(), originalMember.getRole().toString());
 
         Map<String, Object> loginInfo = new HashMap<>();
         loginInfo.put("id", originalMember.getId());
         loginInfo.put("token", jwtToken);
+        loginInfo.put("nickname", originalMember.getName());
+        loginInfo.put("email", originalMember.getEmail());
         return new ResponseEntity<>(loginInfo, HttpStatus.OK);
     }
 
@@ -77,16 +79,26 @@ public class MemberController {
     @PostMapping("/kakao/doLogin")
     public ResponseEntity<?> kakaoLogin(@RequestBody RedirectDto redirectDto){
         AccessTokenDto accessTokenDto = kakaoService.getAccessToken(redirectDto.getCode());
-        KakaoProfileDto kakaoProfileDto  = kakaoService.getKakaoProfile(accessTokenDto.getAccess_token());
-        Member originalMember = memberService.getMemberBySocialId(kakaoProfileDto.getId());
+        KakaoProfileDto kakaoProfileDto = kakaoService.getKakaoProfile(accessTokenDto.getAccess_token());
+
+        String kakaoSocialId = String.valueOf(kakaoProfileDto.getId());
+        Member originalMember = memberService.getMemberBySocialId(kakaoSocialId);
         if(originalMember == null){
-            originalMember = memberService.createOauth(kakaoProfileDto.getId(), kakaoProfileDto.getKakao_account().getEmail(), SocialType.KAKAO);
+            String nickname = (kakaoProfileDto.getKakao_account() != null
+                    && kakaoProfileDto.getKakao_account().getProfile() != null)
+                    ? kakaoProfileDto.getKakao_account().getProfile().getNickname() : "사용자";
+            String email = kakaoProfileDto.getKakao_account() != null
+                    ? kakaoProfileDto.getKakao_account().getEmail() : kakaoSocialId + "@kakao.com";
+            originalMember = memberService.createOauth(kakaoSocialId, email, nickname, SocialType.KAKAO);
         }
+
         String jwtToken = jwtTokenProvider.createToken(originalMember.getEmail(), originalMember.getRole().toString());
 
         Map<String, Object> loginInfo = new HashMap<>();
         loginInfo.put("id", originalMember.getId());
         loginInfo.put("token", jwtToken);
+        loginInfo.put("nickname", originalMember.getName());
+        loginInfo.put("email", originalMember.getEmail());
         return new ResponseEntity<>(loginInfo, HttpStatus.OK);
     }
 }

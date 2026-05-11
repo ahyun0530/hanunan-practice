@@ -51,9 +51,10 @@ public class MemberService {
         return member;
     }
 
-    public Member createOauth(String socialId, String email, SocialType socialType){
+    public Member createOauth(String socialId, String email, String name, SocialType socialType){
         Member member = Member.builder()
                 .email(email)
+                .name(name)
                 .socialType(socialType)
                 .socialId(socialId)
                 .build();
