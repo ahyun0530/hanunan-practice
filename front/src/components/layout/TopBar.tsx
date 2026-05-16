@@ -20,7 +20,13 @@ const TopBar: React.FC<TopBarProps> = ({
   return (
             <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
                 <button
-                    onClick={() => setIsReportWriteModalOpen(true)}
+                    onClick={() => {
+                        if (!userName) {
+                            setIsLoginModalOpen(true);
+                        } else {
+                            setIsReportWriteModalOpen(true);
+                        }
+                    }}
                     className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl shadow-lg hover:scale-105 transition-all flex items-center gap-2"
                 >
                     <span className="text-lg"></span>
