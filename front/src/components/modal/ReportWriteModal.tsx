@@ -22,6 +22,7 @@ const ReportWriteModal = ({
     const [selectedReportType, setSelectedReportType] = useState('🔥 화재');
     const [reportDescription, setReportDescription] = useState('');
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
 
     //제보창이 열릴 때 내 위치를 가져오는 효과
         useEffect(() => {
@@ -32,6 +33,7 @@ const ReportWriteModal = ({
                             const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                             setMapCenter(newPos);
                             setSelectedLocation(newPos);
+                            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
                         },
                         (error) => {
                             console.error("위치 정보를 가져오는데 실패했습니다.", error);
@@ -61,6 +63,9 @@ const ReportWriteModal = ({
         latitude: selectedLocation.lat,
         longitude: selectedLocation.lng,
         userId: currentUserId,
+        userLatitude: userLocation?.lat ?? selectedLocation.lat,
+        userLongitude: userLocation?.lng ?? selectedLocation.lng,
+        userAccuracyMeters: userLocation?.accuracy,
       });
 
       // 성공 시 처리

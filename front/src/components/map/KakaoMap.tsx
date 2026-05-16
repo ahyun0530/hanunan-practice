@@ -218,9 +218,11 @@ export default function KakaoMap({ center, activeCategory, disasterData, weather
     if (activeCategory === 'REPORT') {
       mapReports.forEach((report) => {
         const pos = new kakao.maps.LatLng(report.latitude, report.longitude);
-        const icon = report.type.split(' ')[0];
+        const parts = report.type.split(' ');
+        const icon = parts.length > 1 ? parts[0] : '📍';
+        const label = parts.length > 1 ? parts.slice(1).join(' ') : parts[0];
         const content = document.createElement('div');
-        content.innerHTML = `<div style="cursor:pointer; background:white; padding:5px 12px; border-radius:20px; border:2px solid #FF8A00; box-shadow:0 2px 8px rgba(0,0,0,0.2); display:flex; align-items:center; gap:5px;"><span style="font-size:14px;">${icon}</span><span style="font-size:12px; font-weight:bold; color:#333;">${report.type.split(' ')[1]} 제보</span></div>`;
+        content.innerHTML = `<div style="cursor:pointer; background:white; padding:5px 12px; border-radius:20px; border:2px solid #FF8A00; box-shadow:0 2px 8px rgba(0,0,0,0.2); display:flex; align-items:center; gap:5px;"><span style="font-size:14px;">${icon}</span><span style="font-size:12px; font-weight:bold; color:#333;">${label} 제보</span></div>`;
         content.onclick = (e) => { e.stopPropagation(); onSelectItem(report, 'REPORT'); mapInstance.current.panTo(pos); };
         const overlay = new kakao.maps.CustomOverlay({ position: pos, content, yAnchor: 1.2, zIndex: 30 });
         reportMarkers.push(overlay);

@@ -324,59 +324,77 @@ let MOCK_CITIZEN_REPORTS: CitizenReport[] = [
     reliability: 70 // 70 미만이므로 흐릿하게 처리 대상
   }
 ];
-export const createCitizenReport = async (
-  reportData: Omit<CitizenReport, 'id' | 'reportedAt' | 'gpsVerified' | 'status' | 'likeCount' | 'locationName'>
-): Promise<CitizenReport> => {
-  return new Promise((resolve) => {
-    const geocoder = new window.kakao.maps.services.Geocoder();
+export interface CitizenReportCreateInput {
+  type: string;
+  description: string;
+  pinLatitude: number;
+  pinLongitude: number;
+  userLatitude: number;
+  userLongitude: number;
+  userAccuracyMeters?: number;
+  images?: File[];
+}
 
-    geocoder.coord2Address(reportData.userLongitude, reportData.userLatitude, (result: any, status: any) => {
-      let actualAddress = "위치 정보 없음";
+function adaptCitizenReport(data: any): CitizenReport {
+  return {
+    id: data.id,
+    userId: data.userId,
+    nickname: data.nickname,
+    category: data.type,
+    latitude: data.latitude,
+    longitude: data.longitude,
+    userLatitude: data.userLatitude,
+    userLongitude: data.userLongitude,
+    gpsDistanceMeters: data.distanceMeters,
+    gpsVerified: data.gpsVerified,
+    locationName: '',
+    description: data.description,
+    imageUrl: data.imageUrls ?? [],
+    status: data.status,
+    likeCount: data.likeCount ?? 0,
+    reportedAt: data.createdAt,
+    targetId: 0,
+    targetType: 'DISASTER',
+    reliability: 100,
+  };
+}
 
-      if (status === window.kakao.maps.services.Status.OK) {
-        actualAddress = result[0].road_address
-          ? result[0].road_address.address_name
-          : result[0].address.address_name;
-      } else {
-        actualAddress = `지정된 위치 (좌표: ${reportData.userLatitude.toFixed(3)}, ${reportData.userLongitude.toFixed(3)})`;
-      }
+export const createCitizenReport = async (input: CitizenReportCreateInput): Promise<CitizenReport> => {
+  const formData = new FormData();
+  formData.append('type', input.type);
+  formData.append('description', input.description);
+  formData.append('pinLatitude', String(input.pinLatitude));
+  formData.append('pinLongitude', String(input.pinLongitude));
+  formData.append('userLatitude', String(input.userLatitude));
+  formData.append('userLongitude', String(input.userLongitude));
+  if (input.userAccuracyMeters != null) {
+    formData.append('userAccuracyMeters', String(input.userAccuracyMeters));
+  }
+  (input.images ?? []).forEach((file) => formData.append('images', file));
 
-      setTimeout(() => {
-        const isVerified = Math.abs(reportData.userLatitude - reportData.latitude) < 0.005 &&
-          Math.abs(reportData.userLongitude - reportData.longitude) < 0.005;
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
 
-        const newReport: CitizenReport = {
-          ...reportData,
-          id: Date.now(),
-          reportedAt: new Date().toISOString(),
-          gpsVerified: isVerified,
-          locationName: actualAddress, 
-          status: 'ACTIVE',
-          likeCount: 0,
-          nickname: "사용자",
-          reliability: 100
-        };
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? '제보 등록에 실패했습니다.');
+  }
 
-        MOCK_CITIZEN_REPORTS = [newReport, ...MOCK_CITIZEN_REPORTS];
-        resolve(newReport);
-      }, 300);
-    });
-  });
+  return adaptCitizenReport(await res.json());
 };
 
-export const getCitizenReports = async (targetId?: number, targetType?: string): Promise<CitizenReport[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (targetId && targetType) {
-        const filtered = MOCK_CITIZEN_REPORTS.filter(
-          (r) => r.targetId === targetId && r.targetType === targetType
-        );
-        resolve(filtered);
-      } else {
-        resolve(MOCK_CITIZEN_REPORTS);
-      }
-    }, 300);
-  });
+export const getCitizenReports = async (): Promise<CitizenReport[]> => {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports`, {
+    credentials: 'include',
+  });
+
+  if (!res.ok) throw new Error('제보 목록을 불러오지 못했습니다.');
+
+  const data: any[] = await res.json();
+  return data.map(adaptCitizenReport);
 };
 
 export const deleteCitizenReport = async (reportId: number): Promise<boolean> => {
@@ -633,8 +651,8 @@ export const getSafetyFacilities = async (): Promise<SafetyFacility[]> => {
 export interface MapReport {
   id: number;
   userId: number;
-  type: string;        
-  description: string; 
+  type: string;
+  description: string;
   latitude: number;
   longitude: number;
   locationName: string;
@@ -643,38 +661,68 @@ export interface MapReport {
   likeCount: number;
 }
 
-let MOCK_MAP_REPORTS: MapReport[] = [];
+function adaptToMapReport(data: any): MapReport {
+  return {
+    id: data.id,
+    userId: data.userId,
+    type: data.type,
+    description: data.description,
+    latitude: data.latitude,
+    longitude: data.longitude,
+    locationName: '',
+    nickname: data.nickname ?? '익명',
+    createdAt: data.createdAt,
+    likeCount: data.likeCount ?? 0,
+  };
+}
 
 export const getMapReports = async (): Promise<MapReport[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve([...MOCK_MAP_REPORTS]), 300);
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports`, {
+    credentials: 'include',
   });
+  if (!res.ok) throw new Error('제보 목록을 불러오지 못했습니다.');
+  const data: any[] = await res.json();
+  return data.map(adaptToMapReport);
 };
 
-export const createMapReport = async (
-  data: Omit<MapReport, 'id' | 'createdAt' | 'likeCount' | 'locationName' | 'nickname'>
-): Promise<MapReport> => {
-  return new Promise((resolve) => {
-    const geocoder = new window.kakao.maps.services.Geocoder();
-    
-    geocoder.coord2Address(data.longitude, data.latitude, (result: any, status: any) => {
-      const address = status === window.kakao.maps.services.Status.OK 
-        ? result[0].address.address_name 
-        : "위치 정보 없음";
+export const createMapReport = async (data: {
+  type: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  userId: number;
+  userLatitude?: number;
+  userLongitude?: number;
+  userAccuracyMeters?: number;
+}): Promise<MapReport> => {
+  const cleanType = data.type.includes(' ') ? data.type.split(' ').slice(1).join(' ') : data.type;
 
-      const newReport: MapReport = {
-        ...data,
-        id: Date.now(),
-        locationName: address,
-        nickname: "나의 제보",
-        createdAt: new Date().toISOString(),
-        likeCount: 0
-      };
+  const formData = new FormData();
+  formData.append('type', cleanType);
+  formData.append('description', data.description);
+  formData.append('pinLatitude', String(data.latitude));
+  formData.append('pinLongitude', String(data.longitude));
+  formData.append('userLatitude', String(data.userLatitude ?? data.latitude));
+  formData.append('userLongitude', String(data.userLongitude ?? data.longitude));
+  if (data.userAccuracyMeters != null) {
+    formData.append('userAccuracyMeters', String(data.userAccuracyMeters));
+  }
 
-      MOCK_MAP_REPORTS = [newReport, ...MOCK_MAP_REPORTS];
-      resolve(newReport);
-    });
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('로그인 후 제보할 수 있습니다.');
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
   });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? '제보 등록에 실패했습니다.');
+  }
+
+  return adaptToMapReport(await res.json());
 };
 
 export const getMyMapReports = async (userId: number): Promise<MapReport[]> => {

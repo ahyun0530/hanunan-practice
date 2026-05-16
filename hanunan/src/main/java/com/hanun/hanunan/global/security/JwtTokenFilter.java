@@ -2,6 +2,7 @@ package com.hanun.hanunan.global.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,8 +18,11 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
+import java.security.Key;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 @Component
@@ -40,8 +44,12 @@ public class JwtTokenFilter extends GenericFilter {
                 }
                 String jwtToken = token.substring(7);
 //            token 검증 및 claims(payload) 추출
+                Key signingKey = new SecretKeySpec(
+                        Base64.getDecoder().decode(secretKey),
+                        SignatureAlgorithm.HS512.getJcaName()
+                );
                 Claims claims = Jwts.parserBuilder()
-                        .setSigningKey(secretKey)
+                        .setSigningKey(signingKey)
                         .build()
                         .parseClaimsJws(jwtToken)
                         .getBody();
