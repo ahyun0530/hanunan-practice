@@ -65,28 +65,24 @@ const CreateReportModal = ({
     setIsSubmitting(true);
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
-        const payload = {
-          userId: currentUserId,
-          category: selectedItem.category || selectedItem.alertType || "화제제보",
-          latitude: selectedItem.latitude,
-          longitude: selectedItem.longitude,
-          userLatitude: pos.coords.latitude,
-          userLongitude: pos.coords.longitude,
-          description: newDescription,
-          imageUrl: previews, 
-          targetId: selectedItem.id,
-          targetType: itemType,
-        };
-
         try {
-          const savedReport = await createCitizenReport(payload as any);
+          const savedReport = await createCitizenReport({
+            type: selectedItem.category || selectedItem.alertType || '기타',
+            description: newDescription,
+            pinLatitude: selectedItem.latitude,
+            pinLongitude: selectedItem.longitude,
+            userLatitude: pos.coords.latitude,
+            userLongitude: pos.coords.longitude,
+            userAccuracyMeters: pos.coords.accuracy,
+            images: selectedFiles,
+          });
           setReports(prev => [savedReport, ...prev]);
           clearPreviews();
           setIsCreateModalOpen(false);
           setIsReportModalOpen(true);
           alert(savedReport.gpsVerified ? "위치 인증이 완료되었습니다." : "제보가 등록되었습니다.");
-        } catch (e) {
-          alert("제보 등록 중 오류 발생");
+        } catch (e: any) {
+          alert(e.message ?? "제보 등록 중 오류가 발생했습니다.");
         } finally {
           setIsSubmitting(false);
         }
