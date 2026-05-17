@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS citizen_report (
     user_accuracy_meters DOUBLE PRECISION,
     distance_meters DOUBLE PRECISION NOT NULL,
     gps_verified BOOLEAN NOT NULL DEFAULT false,
+    like_count INT NOT NULL DEFAULT 0,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

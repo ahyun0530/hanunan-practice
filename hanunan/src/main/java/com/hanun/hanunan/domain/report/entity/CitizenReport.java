@@ -68,6 +68,10 @@ public class CitizenReport {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer likeCount = 0;
+
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CitizenReportImage> images = new ArrayList<>();

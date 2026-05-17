@@ -19,6 +19,7 @@ public record CitizenReportResponse(
         Double distanceMeters,
         Boolean gpsVerified,
         String status,
+        Integer likeCount,
         List<String> imageUrls,
         LocalDateTime createdAt
 ) {
@@ -37,6 +38,7 @@ public record CitizenReportResponse(
                 report.getDistanceMeters(),
                 report.getGpsVerified(),
                 report.getStatus().name(),
+                report.getLikeCount(),
                 report.getImages().stream().map(image -> image.getImageUrl()).toList(),
                 report.getCreatedAt()
         );
