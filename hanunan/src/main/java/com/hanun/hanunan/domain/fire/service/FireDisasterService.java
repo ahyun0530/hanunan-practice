@@ -49,13 +49,13 @@ public class FireDisasterService {
                 return;
             }
 
-            // 화재 필터링 + 이미 처리된 SN 중복 제거
+            // 화재·산불 필터링 + 이미 처리된 SN 중복 제거
             List<DisasterApiItem> newFireItems = items.stream()
-                    .filter(item -> "화재".equals(item.getDstSeNm()))
+                    .filter(item -> "화재".equals(item.getDstSeNm()) || "산불".equals(item.getDstSeNm()))
                     .filter(item -> item.getSn() != null && !fireDisasterRepository.existsBySn(item.getSn()))
                     .collect(Collectors.toList());
 
-            log.info("신규 화재 문자: {}건", newFireItems.size());
+            log.info("신규 화재·산불 문자: {}건", newFireItems.size());
 
             for (DisasterApiItem item : newFireItems) {
                 processFireItem(item);
@@ -159,8 +159,8 @@ public class FireDisasterService {
     // ─────────────────────────────────────────
     private GroqLocationResult parseLocationWithGroq(String messageContent) {
         String prompt = """
-                당신은 재난문자에서 화재 발생 위치를 추출하는 파서입니다.
-                아래 재난문자를 분석하여 화재 위치 주소를 추출하세요.
+                당신은 재난문자에서 화재·산불 발생 위치를 추출하는 파서입니다.
+                아래 재난문자를 분석하여 발생 위치 주소를 추출하세요.
 
                 [출력 규칙]
                 - 반드시 순수 JSON만 출력하세요 (마크다운 코드블록, 설명 텍스트 금지)
@@ -170,7 +170,7 @@ public class FireDisasterService {
                 - 반드시 원문에 등장한 표현만 사용하세요. 추론하거나 보완하지 마세요.
                 - 시/군/구 + 읍/면/동 + 번지까지 포함
                 - 광역시/도 명칭은 원문에 명시된 경우에만 포함
-                - 주소가 2개 이상이면 화재 발생지로 명시된 것 우선
+                - 주소가 2개 이상이면 발생지로 명시된 것 우선
 
                 [출력 형식]
                 위치가 있는 경우: {"location_found": true, "address": "추출한 상세 주소"}
@@ -179,6 +179,9 @@ public class FireDisasterService {
                 [예시]
                 입력: "[광주소방] 북구 용봉동 123-4 건물 화재 발생. 해당 지역 주민 대피 바랍니다."
                 출력: {"location_found": true, "address": "광주 북구 용봉동 123-4"}
+
+                입력: "[산림청] 경북 안동시 길안면 만경산 산불 발생. 인근 주민 대피 바랍니다."
+                출력: {"location_found": true, "address": "경북 안동시 길안면 만경산"}
 
                 입력: "[안전안내문자] 화재가 발생하였습니다. 주의하시기 바랍니다."
                 출력: {"location_found": false, "address": null}
