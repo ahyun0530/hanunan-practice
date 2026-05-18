@@ -20,6 +20,7 @@ public record CitizenReportResponse(
         Boolean gpsVerified,
         String status,
         Integer likeCount,
+        Integer reportCount,
         List<String> imageUrls,
         LocalDateTime createdAt
 ) {
@@ -39,6 +40,7 @@ public record CitizenReportResponse(
                 report.getGpsVerified(),
                 report.getStatus().name(),
                 report.getLikeCount(),
+                report.getReportCount(),
                 report.getImages().stream().map(image -> image.getImageUrl()).toList(),
                 report.getCreatedAt()
         );

@@ -3,8 +3,11 @@ package com.hanun.hanunan.domain.report.service;
 import com.hanun.hanunan.domain.member.entity.Member;
 import com.hanun.hanunan.domain.member.repository.MemberRepository;
 import com.hanun.hanunan.domain.report.dto.CitizenReportCreateRequest;
+import com.hanun.hanunan.domain.report.dto.CitizenReportUpdateRequest;
 import com.hanun.hanunan.domain.report.entity.CitizenReport;
 import com.hanun.hanunan.domain.report.entity.CitizenReportImage;
+import com.hanun.hanunan.domain.report.entity.CitizenReportLike;
+import com.hanun.hanunan.domain.report.repository.CitizenReportLikeRepository;
 import com.hanun.hanunan.domain.report.repository.CitizenReportRepository;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
@@ -36,6 +39,7 @@ public class CitizenReportService {
     private static final long MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
     private final CitizenReportRepository citizenReportRepository;
+    private final CitizenReportLikeRepository citizenReportLikeRepository;
     private final MemberRepository memberRepository;
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), SRID_WGS84);
 
@@ -92,6 +96,69 @@ public class CitizenReportService {
     @Transactional(readOnly = true)
     public List<CitizenReport> findAll() {
         return citizenReportRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Transactional
+    public CitizenReport update(String memberEmail, Long reportId, CitizenReportUpdateRequest request) {
+        CitizenReport report = citizenReportRepository.findById(reportId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 제보입니다."));
+
+        if (!report.getMember().getEmail().equals(memberEmail)) {
+            throw new AccessDeniedException("본인의 제보만 수정할 수 있습니다.");
+        }
+        if (!org.springframework.util.StringUtils.hasText(request.getType())) {
+            throw new IllegalArgumentException("제보 유형을 입력해 주세요.");
+        }
+        if (!org.springframework.util.StringUtils.hasText(request.getDescription())) {
+            throw new IllegalArgumentException("제보 내용을 입력해 주세요.");
+        }
+
+        report.updateContent(request.getType().trim(), request.getDescription().trim());
+        return report;
+    }
+
+    @Transactional
+    public void delete(String memberEmail, Long reportId) {
+        CitizenReport report = citizenReportRepository.findById(reportId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 제보입니다."));
+
+        if (!report.getMember().getEmail().equals(memberEmail)) {
+            throw new AccessDeniedException("본인의 제보만 삭제할 수 있습니다.");
+        }
+
+        citizenReportRepository.delete(report);
+    }
+
+    @Transactional
+    public boolean toggleLike(String memberEmail, Long reportId) {
+        Member member = memberRepository.findByEmail(memberEmail)
+                .orElseThrow(() -> new AccessDeniedException("인증된 사용자만 좋아요를 누를 수 있습니다."));
+        CitizenReport report = citizenReportRepository.findById(reportId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 제보입니다."));
+
+        return citizenReportLikeRepository.findByMemberIdAndReportId(member.getId(), reportId)
+                .map(like -> {
+                    citizenReportLikeRepository.delete(like);
+                    report.decrementLikeCount();
+                    return false;
+                })
+                .orElseGet(() -> {
+                    citizenReportLikeRepository.save(CitizenReportLike.builder()
+                            .member(member)
+                            .report(report)
+                            .build());
+                    report.incrementLikeCount();
+                    return true;
+                });
+    }
+
+    @Transactional
+    public CitizenReport flag(Long reportId) {
+        CitizenReport report = citizenReportRepository.findById(reportId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 제보입니다."));
+
+        report.incrementReportCount();
+        return report;
     }
 
     private void validateRequest(CitizenReportCreateRequest request) {

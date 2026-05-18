@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS citizen_report (
     distance_meters DOUBLE PRECISION NOT NULL,
     gps_verified BOOLEAN NOT NULL DEFAULT false,
     like_count INT NOT NULL DEFAULT 0,
+    report_count INT NOT NULL DEFAULT 0,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -26,4 +27,11 @@ CREATE TABLE IF NOT EXISTS citizen_report_image (
     stored_file_name VARCHAR(255) NOT NULL,
     original_file_name VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS citizen_report_like (
+    id BIGSERIAL PRIMARY KEY,
+    member_id BIGINT NOT NULL REFERENCES member(id),
+    report_id BIGINT NOT NULL REFERENCES citizen_report(id) ON DELETE CASCADE,
+    UNIQUE (member_id, report_id)
 );

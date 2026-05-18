@@ -72,6 +72,10 @@ public class CitizenReport {
     @Builder.Default
     private Integer likeCount = 0;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer reportCount = 0;
+
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CitizenReportImage> images = new ArrayList<>();
@@ -79,5 +83,22 @@ public class CitizenReport {
     public void addImage(CitizenReportImage image) {
         images.add(image);
         image.attachTo(this);
+    }
+
+    public void updateContent(String type, String description) {
+        this.type = type;
+        this.description = description;
+    }
+
+    public void incrementLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decrementLikeCount() {
+        if (this.likeCount > 0) this.likeCount--;
+    }
+
+    public void incrementReportCount() {
+        this.reportCount++;
     }
 }
