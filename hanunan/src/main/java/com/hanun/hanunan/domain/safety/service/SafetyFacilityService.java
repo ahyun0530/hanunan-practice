@@ -18,6 +18,7 @@ public class SafetyFacilityService {
 
     private final SafetyFacilityRepository safetyFacilityRepository;
     private final AedApiService aedApiService;
+    private final ShelterApiService shelterApiService;
 
     /**
      * 바운딩박스 범위 내 안전시설 조회
@@ -57,10 +58,10 @@ public class SafetyFacilityService {
                     .forEach(results::add);
         }
 
-        // ── 통합대피소 (SHELTER) - 추후 외부 API 연동 예정 ───────────
-        // if (allTypes || types.contains("SHELTER")) {
-        //     results.addAll(shelterApiService.fetchShelter(swLat, swLng, neLat, neLng));
-        // }
+        // ── 통합대피소 (SHELTER) ─────────────────────────────────────
+        if (allTypes || types.contains("SHELTER")) {
+            results.addAll(shelterApiService.fetchShelter(swLat, swLng, neLat, neLng));
+        }
 
         return results;
     }
