@@ -65,6 +65,11 @@ disaster:
     key: ${DISASTER_API_KEY}
     url: ${DISASTER_API_URL:https://www.safetydata.go.kr/V2/api/DSSP-IF-00247}
 
+safety:
+  aed:
+    key: ${AED_API_KEY}
+    url: ${AED_API_URL:http://www.safetydata.go.kr/V2/api/DSSP-IF-00068}
+
 
 server:
   port: ${SERVER_PORT}
