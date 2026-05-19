@@ -60,7 +60,8 @@ public class SecurityConfig {
                                 "/member/kakao/doLogin",
                                 "/oauth2/**",
                                 "/api/disaster/**",
-                                "/api/fire/**"
+                                "/api/fire/**",
+                                "/api/safety/**"
                         ).permitAll()
                         .anyRequest().authenticated())
 
