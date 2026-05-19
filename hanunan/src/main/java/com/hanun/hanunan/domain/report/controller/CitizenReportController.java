@@ -53,6 +53,21 @@ public class CitizenReportController {
                 .toList();
     }
 
+    @GetMapping("/liked")
+    public ResponseEntity<List<CitizenReportResponse>> findLikedReports(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        if (userDetails == null) {
+            throw new AccessDeniedException("로그인이 필요합니다.");
+        }
+
+        List<CitizenReportResponse> response = citizenReportService.findLikedReports(userDetails.getUsername())
+                .stream()
+                .map(CitizenReportResponse::from)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{id}")
     public ResponseEntity<CitizenReportResponse> update(
             @AuthenticationPrincipal UserDetails userDetails,

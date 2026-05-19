@@ -152,6 +152,16 @@ public class CitizenReportService {
                 });
     }
 
+    @Transactional(readOnly = true)
+    public List<CitizenReport> findLikedReports(String memberEmail) {
+        Member member = memberRepository.findByEmail(memberEmail)
+                .orElseThrow(() -> new AccessDeniedException("인증된 사용자만 조회할 수 있습니다."));
+
+        return citizenReportLikeRepository.findAllByMemberId(member.getId()).stream()
+                .map(CitizenReportLike::getReport)
+                .toList();
+    }
+
     @Transactional
     public CitizenReport flag(Long reportId) {
         CitizenReport report = citizenReportRepository.findById(reportId)
