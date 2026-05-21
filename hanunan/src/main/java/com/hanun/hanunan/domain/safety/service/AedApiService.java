@@ -75,6 +75,7 @@ public class AedApiService {
         for (AedApiResponse.AedItem item : items) {
             if (item.getLat() == null || item.getLot() == null) continue;
             results.add(SafetyFacilityDto.builder()
+                    .id(item.getSn() != null ? String.valueOf(item.getSn()) : null)
                     .type("AED")
                     .name(item.getMngInstNm())
                     .address(item.getAddr())

@@ -75,6 +75,7 @@ public class ShelterApiService {
         for (ShelterApiResponse.ShelterItem item : items) {
             if (item.getLat() == null || item.getLot() == null) continue;
             results.add(SafetyFacilityDto.builder()
+                    .id(item.getMngSn())
                     .type("SHELTER")
                     .name(item.getReareNm())
                     .address(item.getRonaDaddr())

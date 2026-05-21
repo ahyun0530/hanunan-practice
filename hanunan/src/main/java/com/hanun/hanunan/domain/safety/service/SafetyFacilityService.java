@@ -68,6 +68,7 @@ public class SafetyFacilityService {
 
     private SafetyFacilityDto toDto(SafetyFacility f) {
         return SafetyFacilityDto.builder()
+                .id(String.valueOf(f.getId()))
                 .type(f.getType().name())
                 .name(f.getName())
                 .address(f.getAddress())
