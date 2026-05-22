@@ -14,4 +14,5 @@ public class FireMarkerDto {
     private Double latitude;
     private Double longitude;
     private String createdAt;
+    private String alertLevel; // 긴급단계 (안전안내, 긴급재난, 위급재난)
 }

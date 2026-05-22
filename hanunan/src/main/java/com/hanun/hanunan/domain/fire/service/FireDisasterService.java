@@ -140,6 +140,7 @@ public class FireDisasterService {
                     .sn(item.getSn())
                     .messageContent(item.getMsgCn())
                     .rcptnRgnNm(item.getRcptnRgnNm())
+                    .alertLevel(item.getEmrgStepNm())
                     .parsedAddress(fullAddress)
                     .latitude(coords[0])
                     .longitude(coords[1])
@@ -274,6 +275,7 @@ public class FireDisasterService {
                 .sn(testSn)
                 .messageContent(messageContent)
                 .rcptnRgnNm(rcptnRgnNm != null ? rcptnRgnNm : "테스트")
+                .alertLevel("테스트")
                 .parsedAddress(fullAddress)
                 .latitude(coords[0])
                 .longitude(coords[1])
@@ -287,7 +289,8 @@ public class FireDisasterService {
                 saved.getId(), saved.getSn(), saved.getMessageContent(),
                 saved.getRcptnRgnNm(), saved.getParsedAddress(),
                 saved.getLatitude(), saved.getLongitude(),
-                saved.getCreatedAt().toString()
+                saved.getCreatedAt().toString(),
+                saved.getAlertLevel()
         );
     }
 
@@ -304,7 +307,8 @@ public class FireDisasterService {
                         fire.getParsedAddress(),
                         fire.getLatitude(),
                         fire.getLongitude(),
-                        fire.getCreatedAt().toString()
+                        fire.getCreatedAt().toString(),
+                        fire.getAlertLevel()
                 ))
                 .collect(Collectors.toList());
     }

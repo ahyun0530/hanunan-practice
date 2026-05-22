@@ -24,6 +24,8 @@ public class FireDisaster {
 
     private String rcptnRgnNm; // 수신지역명
 
+    private String alertLevel; // 긴급단계 (안전안내, 긴급재난, 위급재난)
+
     private String parsedAddress; // Groq + RCPTN_RGN_NM 결합 주소
 
     private Double latitude;

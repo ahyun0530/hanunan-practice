@@ -22,4 +22,7 @@ public class DisasterApiItem {
 
     @JsonProperty("CRT_DT")
     private String crtDt; // 생성일시
+
+    @JsonProperty("EMRG_STEP_NM")
+    private String emrgStepNm; // 긴급단계명 (안전안내, 긴급재난, 위급재난)
 }
